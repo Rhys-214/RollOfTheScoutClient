@@ -45,8 +45,8 @@ namespace RollOfTheScoutClient
                 return;
             }
 
-            // 配置文件按游戏语言择一加载（中文 / 英文两个 .cfg，见 ConfigLocalization / ClientConfig）。
-            ClientConfig.Initialize();
+            // 配置项按游戏语言本地化（见 ConfigLocalization）；绑定到插件自身的 Config，ModConfig 才能读到。
+            ClientConfig.Initialize(Config);
             gameObject.AddComponent<ClassDisplayReceiver>();
 
             _harmony = new Harmony(Guid);

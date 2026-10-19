@@ -21,3 +21,13 @@
 - 本机已装主模组时自动停用。
 - 含第三方头顶 id 显示模组（BetterPlayerDistance / Sense of Direction）兼容层。
 - 配置中英双语，按游戏语言自动切换。
+
+## 1.0.1
+
+### English
+
+- Urgently fixed some issues with the mod configuration file.
+
+### 中文
+
+- 紧急修复了模组配置文件的一些问题。

@@ -35,13 +35,7 @@
 
 ### Configuration
 
-Config files are generated automatically on first run:
-
-| Game language | File |
-|---|---|
-| Chinese (Simplified / Traditional) | `BepInEx/config/com.peakmodding.RollOfTheScoutClient.cfg` |
-| Any other language | `BepInEx/config/com.peakmodding.RollOfTheScoutClient.en.cfg` |
-
+Config files are generated automatically on first run(`BepInEx/config/com.peakmodding.RollOfTheScoutClient.cfg`).
 Options: the class-display key, the display mode (`HoldToShow` / `PressToShow` / `ToggleOnPress`) and the overhead class prefix.
 
 ### Building from source
@@ -131,13 +125,7 @@ General contact: email **2043581350@qq.com**.
 
 ### 配置
 
-配置文件将在首次运行自动生成：
-
-| 游戏语言 | 文件 |
-|---|---|
-| 中文（简体 / 繁体） | `BepInEx/config/com.peakmodding.RollOfTheScoutClient.cfg` |
-| 其它任意语言 | `BepInEx/config/com.peakmodding.RollOfTheScoutClient.en.cfg` |
-
+配置文件将在首次运行自动生成（`BepInEx/config/com.peakmodding.RollOfTheScoutClient.cfg`）
 配置项：职业显示按键、显示模式（`HoldToShow` / `PressToShow` / `ToggleOnPress`）、头顶职业前缀。
 
 ### 从源码编译

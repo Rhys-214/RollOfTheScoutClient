@@ -6,11 +6,8 @@ namespace RollOfTheScoutClient
     /// <summary>
     /// 附属模组配置文件的中英双语国际化（按游戏语言择一），机制与主模组 <c>RollOfTheScout</c> 完全一致。
     ///
-    /// · 游戏语言为中文（简体 / 繁体）→ <see cref="UseEnglish"/> = false：
-    ///   Section / Key / Description 全部使用中文原文，写入 <c>com.peakmodding.RollOfTheScoutClient.cfg</c>；
-    /// · 其它语言 → <see cref="UseEnglish"/> = true：
-    ///   Section 使用英文分类名、Key 使用小驼峰（camelCase）、Description 使用英文，
-    ///   写入 <c>com.peakmodding.RollOfTheScoutClient.en.cfg</c>。
+    /// · 游戏语言为中文（简体 / 繁体）→ <see cref="UseEnglish"/> = false：Section / Key / Description 全部使用中文原文；
+    /// · 其它语言 → <see cref="UseEnglish"/> = true：Section 使用英文分类名、Key 使用小驼峰（camelCase）、Description 使用英文。
     /// 翻译表以「中文 Section | 中文 Key」为索引；未收录的条目自动回退为中文原文。
     /// </summary>
     internal static class ConfigLocalization
