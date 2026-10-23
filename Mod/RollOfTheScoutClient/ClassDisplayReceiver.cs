@@ -31,6 +31,8 @@ namespace RollOfTheScoutClient
         private const byte KindClassSnapshot = 1;
         private const byte KindToast = 2;
         private const byte KindClassNames = 3;
+        private const byte KindClassKeywords = 4;
+        private const byte KindClassIntro = 5;
 
         // ---- 接收到的职业分配情况（ActorNumber → ClassType 数值，保持主机侧顺序）----
         private readonly List<KeyValuePair<int, int>> _remoteClasses = new List<KeyValuePair<int, int>>();
@@ -41,6 +43,12 @@ namespace RollOfTheScoutClient
         // 有它之后，本模组**不需要内置职业名表**：主模组新增职业时本模组无需更新即可正确显示，
         // 不会出现「新职业显示成无职业」的问题；本地 ClassNames 仅作为旧版主模组下的兜底。
         private readonly Dictionary<int, string> _classNameByCode = new Dictionary<int, string>();
+
+        // ---- 接收到的「新职业」关键词 / 简介（主机广播）----
+        // 本模组更新滞后于主模组时（主模组新增了职业、本机文案表里还没有），用这里的文本兜底显示，
+        // 因此主模组新增职业后**不必同步更新本附属模组**也能正常显示介绍。
+        private readonly Dictionary<int, string> _remoteKeywords = new Dictionary<int, string>();
+        private readonly Dictionary<int, string> _remoteIntro = new Dictionary<int, string>();
 
         // ---- 接收到的职业效果提示（Toast），与主机同样的 8 秒 / 最多 5 条规则 ----
         private readonly List<string> _toasts = new List<string>();
@@ -57,6 +65,21 @@ namespace RollOfTheScoutClient
         private GUIStyle _toastStyle;
         private GUIStyle _classListStyle;
         private GUIStyle _classListTitleStyle;
+
+        // ---- 「职业介绍」板块（本人职业的关键词 / 简介，跟随职业分配面板一起显示）----
+        private GUIStyle _classIntroStyle;
+        private GUIStyle _classIntroTitleStyle;
+        private int _classIntroCacheCode = -1;
+        private string _classIntroCacheTitle;
+        private List<string> _classIntroCacheLines;
+
+        /// <summary>职业介绍文案版本号：收到主机广播的新文案时自增（用于跳过每帧重建）。</summary>
+        private int _introVersion = 1;
+        private int _introCacheVersion;
+
+        /// <summary>职业分配面板文本缓存（按住显示时每帧读取，只有分配变化才重建）。</summary>
+        private int _panelSignature = int.MinValue;
+        private List<string> _panelLinesCache;
 
         private void Awake()
         {
@@ -84,9 +107,7 @@ namespace RollOfTheScoutClient
             // 本机成为主机（房主离开后房主迁移）：没有广播来源 → 清空并跳过。
             if (IsHostNow())
             {
-                _remoteClasses.Clear();
-                _remoteClassMap.Clear();
-                _hasRemoteSnapshot = false;
+                ClearReceivedData();
                 _toasts.Clear();
                 _toastExpiries.Clear();
                 PushNativeOverlay();
@@ -99,14 +120,25 @@ namespace RollOfTheScoutClient
             // 回到机场（大厅）时清空，避免残留上一局的分配情况；主机此时也不再广播。
             if (!IsInGameplayScene() && (_remoteClasses.Count > 0 || _toasts.Count > 0))
             {
-                _remoteClasses.Clear();
-                _remoteClassMap.Clear();
-                _hasRemoteSnapshot = false;
+                ClearReceivedData();
                 _toasts.Clear();
                 _toastExpiries.Clear();
             }
 
             PushNativeOverlay();
+        }
+
+        /// <summary>清空「上一局 / 无广播来源」时缓存的职业显示数据（含面板文本与介绍缓存）。</summary>
+        private void ClearReceivedData()
+        {
+            _remoteClasses.Clear();
+            _remoteClassMap.Clear();
+            _remoteKeywords.Clear();
+            _remoteIntro.Clear();
+            _hasRemoteSnapshot = false;
+            _panelSignature = int.MinValue;
+            _panelLinesCache = null;
+            InvalidateIntroCache();
         }
 
         /// <summary>
@@ -123,25 +155,134 @@ namespace RollOfTheScoutClient
             List<string> lines = visible ? BuildPanelLines() : null;
             if (lines != null && lines.Count == 0) { lines = null; visible = false; }
 
+            string title = $"[职业分配] 按 {ClientConfig.ClassListKey.Value} 显示";
             PeakNativeUi.NativeOverlay.SetPanel(
-                $"[职业分配] 按 {ClientConfig.ClassListKey.Value} 显示", lines, visible);
+                title, lines, visible, unchecked(_panelSignature * 31 + title.GetHashCode()));
+
+            // 面板下方：本人职业的关键词 + 简介（只显示自己，不列出全部职业）。
+            if (visible && TryBuildClassIntro(LocalClassCode(), out string introTitle, out List<string> introLines))
+                PeakNativeUi.NativeOverlay.SetClassIntro(introTitle, introLines, visible: true, _introVersion);
+            else
+                PeakNativeUi.NativeOverlay.SetClassIntroHidden();
         }
 
-        /// <summary>构造职业面板各行文本（与主机端同一套措辞）。</summary>
+        /// <summary>本机玩家（自己角色）当前职业数值（0 = 无职业 / 尚未收到广播）。</summary>
+        private int LocalClassCode()
+        {
+            var local = Character.localCharacter;
+            if (local == null) return 0;
+            return ClassCodeOf(local);
+        }
+
+        /// <summary>
+        /// 构造「本人职业介绍」板块的标题与正文（关键词 / 简介）。
+        /// 结果按「职业数值 + 文案版本」缓存：职业不变时不重复拼接字符串（按住显示时每帧都会调用）。
+        ///
+        /// 文案来源：**优先本机文案表**（语言与本地游戏一致）；本机表里没有该职业时
+        /// （主模组新增职业、本模组尚未更新），退回主机广播来的文本 —— 因此主模组更新后
+        /// 本附属模组**无需同步更新**也能显示新职业的介绍。
+        /// 返回 false 表示该职业没有介绍文案（如「无职业」），此时应隐藏板块。
+        /// </summary>
+        private bool TryBuildClassIntro(int code, out string title, out List<string> lines)
+        {
+            title = null;
+            lines = null;
+            if (code <= 0) return false;
+
+            if (code == _classIntroCacheCode
+                && _introCacheVersion == _introVersion
+                && _classIntroCacheLines != null)
+            {
+                title = _classIntroCacheTitle;
+                lines = _classIntroCacheLines;
+                return true;
+            }
+
+            string keywords = ClassIntroText.KeywordsLine(code);
+            string intro = ClassIntroText.IntroLine(code);
+
+            // 本机文案表没有（或只有一半）→ 用主机广播的原文兜底（标签用本机语言；简介自带「【名称】」前缀）
+            if (string.IsNullOrEmpty(keywords) && _remoteKeywords.TryGetValue(code, out string remoteKeywords))
+                keywords = LocalizeKeywordsLine(remoteKeywords);
+            if (string.IsNullOrEmpty(intro) && _remoteIntro.TryGetValue(code, out string remoteIntro))
+                intro = remoteIntro;
+
+            if (string.IsNullOrEmpty(keywords) && string.IsNullOrEmpty(intro)) return false;
+
+            var list = new List<string>(2);
+            if (!string.IsNullOrEmpty(keywords)) list.Add(keywords);
+            if (!string.IsNullOrEmpty(intro)) list.Add(intro);
+
+            _classIntroCacheCode = code;
+            _introCacheVersion = _introVersion;
+            _classIntroCacheTitle = ClassIntroText.TitlePrefix + NameOf(code);
+            _classIntroCacheLines = list;
+
+            title = _classIntroCacheTitle;
+            lines = list;
+            return true;
+        }
+
+        /// <summary>给「主机广播来的关键词原文」加上本机语言的标签。</summary>
+        private static string LocalizeKeywordsLine(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return string.Empty;
+            return ConfigLocalization.UseEnglish ? "Keywords: " + text : "关键词：" + text;
+        }
+
+        /// <summary>职业介绍缓存失效（收到主机广播的新名称 / 新文案时调用）。</summary>
+        private void InvalidateIntroCache()
+        {
+            _introVersion++;
+            _classIntroCacheCode = -1;
+            _classIntroCacheLines = null;
+        }
+
+        /// <summary>
+        /// 构造职业面板各行文本（与主机端同一套措辞）。
+        /// 按「(ActorNumber, 职业码, 昵称哈希)」签名缓存：按住显示时每帧调用，只有分配变化才重建。
+        /// </summary>
         private List<string> BuildPanelLines()
         {
+            int signature = ComputePanelSignature();
+            if (signature == _panelSignature && _panelLinesCache != null) return _panelLinesCache;
+
             var lines = new List<string>(_remoteClasses.Count);
 
             // 按主机广播的 ActorNumber → 昵称（与主机的 PhotonView.Owner.NickName 完全一致）
             var room = PhotonNetwork.CurrentRoom;
-            foreach (var kv in _remoteClasses)
+            for (int i = 0; i < _remoteClasses.Count; i++)
             {
+                var kv = _remoteClasses[i];
                 var player = room != null ? room.GetPlayer(kv.Key) : null;
                 string name = player != null && !string.IsNullOrEmpty(player.NickName)
                     ? player.NickName : $"#{kv.Key}";
                 lines.Add($"{name}：{NameOf(kv.Value)}");
             }
+
+            _panelSignature = signature;
+            _panelLinesCache = lines;
             return lines;
+        }
+
+        /// <summary>职业分配面板的内容签名（只读整数 / 哈希，不分配对象）。</summary>
+        private int ComputePanelSignature()
+        {
+            unchecked
+            {
+                int sig = 17;
+                var room = PhotonNetwork.CurrentRoom;
+                for (int i = 0; i < _remoteClasses.Count; i++)
+                {
+                    var kv = _remoteClasses[i];
+                    sig = sig * 31 + kv.Key;
+                    sig = sig * 31 + kv.Value;
+                    var player = room != null ? room.GetPlayer(kv.Key) : null;
+                    if (player != null && !string.IsNullOrEmpty(player.NickName))
+                        sig = sig * 31 + player.NickName.GetHashCode();
+                }
+                return sig;
+            }
         }
 
         public void OnEvent(EventData photonEvent)
@@ -164,6 +305,7 @@ namespace RollOfTheScoutClient
 
                 if (kind == KindClassSnapshot) SetSnapshot(data);
                 else if (kind == KindClassNames) SetClassNames(data);
+                else if (kind == KindClassKeywords || kind == KindClassIntro) SetClassText(kind, data);
                 else if (kind == KindToast) AddToast(data);
             }
             catch (Exception e)
@@ -204,6 +346,25 @@ namespace RollOfTheScoutClient
                 if (int.TryParse(part.Substring(0, eq), out int code))
                     _classNameByCode[code] = part.Substring(eq + 1);
             }
+            InvalidateIntroCache();   // 标题里的职业名可能变化
+        }
+
+        /// <summary>
+        /// 解析 <c>"code=文本;…"</c> 并更新「新职业」的关键词 / 简介表。
+        /// 只在本地文案表缺少该职业时才会被使用（见 <see cref="TryBuildClassIntro"/>）。
+        /// </summary>
+        private void SetClassText(byte kind, string data)
+        {
+            var map = kind == KindClassKeywords ? _remoteKeywords : _remoteIntro;
+            foreach (var part in data.Split(';'))
+            {
+                if (string.IsNullOrEmpty(part)) continue;
+                int eq = part.IndexOf('=');
+                if (eq <= 0 || eq + 1 >= part.Length) continue;
+                if (int.TryParse(part.Substring(0, eq), out int code))
+                    map[code] = part.Substring(eq + 1);
+            }
+            InvalidateIntroCache();
         }
 
         /// <summary>
@@ -382,6 +543,50 @@ namespace RollOfTheScoutClient
                 var line = new Rect(box.x + 10f, box.y + 6f + lineH * i, box.width - 20f, lineH);
                 GUI.Label(line, lines[i], i == 0 ? _classListTitleStyle : _classListStyle);
             }
+
+            // 面板下方：本人职业的关键词与简介（与面板同时显示）
+            DrawClassIntro(box.yMax + 8f);
+        }
+
+        /// <summary>
+        /// IMGUI 回退绘制「本人职业介绍」板块（仅在原生字体叠加层不可用时走到这里）。
+        /// 与原生叠加层同义：只显示本机玩家自己的职业，不列出全部职业。
+        /// </summary>
+        private void DrawClassIntro(float top)
+        {
+            if (!TryBuildClassIntro(LocalClassCode(), out string title, out List<string> lines)) return;
+
+            if (_classIntroStyle == null)
+            {
+                int size = Mathf.Max(16, Mathf.RoundToInt(Screen.height / 48f));
+                _classIntroTitleStyle = new GUIStyle(GUI.skin.label)
+                {
+                    fontSize = size,
+                    fontStyle = FontStyle.Bold,
+                    alignment = TextAnchor.MiddleLeft,
+                };
+                _classIntroTitleStyle.normal.textColor = new Color(1f, 0.9f, 0.4f);
+                _classIntroStyle = new GUIStyle(GUI.skin.label)
+                {
+                    fontSize = size,
+                    alignment = TextAnchor.MiddleLeft,
+                    wordWrap = true,
+                };
+                _classIntroStyle.normal.textColor = Color.white;
+            }
+
+            float w = Screen.width * 0.40f;
+            float lineH = _classIntroStyle.fontSize * 1.6f;
+            var body = new GUIContent(string.Join("\n", lines));
+            float bodyH = _classIntroStyle.CalcHeight(body, w - 20f);
+            var box = new Rect(Screen.width - w - 12f, top, w, lineH + bodyH + 16f);
+
+            GUI.color = new Color(0f, 0f, 0f, 0.6f);
+            GUI.DrawTexture(box, Texture2D.whiteTexture);
+            GUI.color = Color.white;
+
+            GUI.Label(new Rect(box.x + 10f, box.y + 6f, box.width - 20f, lineH), title, _classIntroTitleStyle);
+            GUI.Label(new Rect(box.x + 10f, box.y + 6f + lineH, box.width - 20f, bodyH), body, _classIntroStyle);
         }
 
         private void DrawToasts()
