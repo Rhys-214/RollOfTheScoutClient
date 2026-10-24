@@ -52,12 +52,18 @@
 - **调整** 简介行改为「【团队核心】…」格式（去掉「简介：」前缀，中英一致）。
 - 数据来源仍是主机已广播的职业数值（Photon 自定义事件 197）；本附属模组依旧只接收、不发送。
 
-## 1.0.3
+## 1.0.4
 
 ### English
 
-- Align the version numbers.
+- **Changed** Bilingual display and config: the class panel shows `Name：EnglishClass · 中文职业`; intro lines show English keywords/intro followed by the Chinese ones; effect notices can carry an English line plus a Chinese line; the config file is now permanently bilingual (`General通用` / `classDisplayKey职业显示-按键`) and old files are auto-backed-up and regenerated. The overhead default is now **off** (`overheadClassPrefix = false`).
+- **New** Supports targeted notices (event 197 kind 6) used by the main mod for per-class warnings (e.g. the 10 s forced-backflip warning); non-targeted clients ignore them.
+- **Changed** Config keys follow the Chinese key's hyphen segments with capitalized English parts (e.g. `ClassDisplay-Key职业显示-按键`), and **old config files are backed up and regenerated automatically**.
+- **Changed** Overlay text is no longer bold, and the addon prefers a thinner font when the game provides one, so English lines are clearer.
 
 ### 中文
 
-- 对齐版本号。
+- **调整** 显示与配置改为中英双语：职业面板显示 `玩家名：EnglishClass · 中文职业`；介绍行先英文关键词 / 简介、后中文；效果提示可带「英文一行 + 中文一行」；配置文件固定中英双语（`General通用` / `classDisplayKey职业显示-按键`），旧配置自动备份并重建。头顶职业前缀默认改为**关闭**（`overheadClassPrefix = false`）。
+- **新增** 支持定向提示（事件 197 Kind 6），供主模组发送「仅对应职业可见」的提醒（如强制后空翻前 10 秒预警）；非目标客机收到即忽略。
+- **调整** 配置键名的英文部分改为按中文分段、每段首字母大写（如 `ClassDisplay-Key职业显示-按键`）；**旧配置自动备份并重建**。
+- **调整** 屏幕文字取消加粗；游戏提供更细字体时优先使用，英文行更清晰。

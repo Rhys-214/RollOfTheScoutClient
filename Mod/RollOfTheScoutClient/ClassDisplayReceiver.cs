@@ -33,6 +33,7 @@ namespace RollOfTheScoutClient
         private const byte KindClassNames = 3;
         private const byte KindClassKeywords = 4;
         private const byte KindClassIntro = 5;
+        private const byte KindTargetedToast = 6;
 
         // ---- 接收到的职业分配情况（ActorNumber → ClassType 数值，保持主机侧顺序）----
         private readonly List<KeyValuePair<int, int>> _remoteClasses = new List<KeyValuePair<int, int>>();
@@ -155,7 +156,7 @@ namespace RollOfTheScoutClient
             List<string> lines = visible ? BuildPanelLines() : null;
             if (lines != null && lines.Count == 0) { lines = null; visible = false; }
 
-            string title = $"[职业分配] 按 {ClientConfig.ClassListKey.Value} 显示";
+            string title = $"[职业分配 / Class List] {ClientConfig.ClassListKey.Value}";
             PeakNativeUi.NativeOverlay.SetPanel(
                 title, lines, visible, unchecked(_panelSignature * 31 + title.GetHashCode()));
 
@@ -201,9 +202,10 @@ namespace RollOfTheScoutClient
             string keywords = ClassIntroText.KeywordsLine(code);
             string intro = ClassIntroText.IntroLine(code);
 
-            // 本机文案表没有（或只有一半）→ 用主机广播的原文兜底（标签用本机语言；简介自带「【名称】」前缀）
+            // 本机文案表没有（或只有一半）→ 用主机广播的原文兜底
+            //（广播过来的关键词 / 简介已是「中英双语 + 标签」的完整文本，直接使用）
             if (string.IsNullOrEmpty(keywords) && _remoteKeywords.TryGetValue(code, out string remoteKeywords))
-                keywords = LocalizeKeywordsLine(remoteKeywords);
+                keywords = remoteKeywords;
             if (string.IsNullOrEmpty(intro) && _remoteIntro.TryGetValue(code, out string remoteIntro))
                 intro = remoteIntro;
 
@@ -221,13 +223,6 @@ namespace RollOfTheScoutClient
             title = _classIntroCacheTitle;
             lines = list;
             return true;
-        }
-
-        /// <summary>给「主机广播来的关键词原文」加上本机语言的标签。</summary>
-        private static string LocalizeKeywordsLine(string text)
-        {
-            if (string.IsNullOrEmpty(text)) return string.Empty;
-            return ConfigLocalization.UseEnglish ? "Keywords: " + text : "关键词：" + text;
         }
 
         /// <summary>职业介绍缓存失效（收到主机广播的新名称 / 新文案时调用）。</summary>
@@ -306,6 +301,7 @@ namespace RollOfTheScoutClient
                 if (kind == KindClassSnapshot) SetSnapshot(data);
                 else if (kind == KindClassNames) SetClassNames(data);
                 else if (kind == KindClassKeywords || kind == KindClassIntro) SetClassText(kind, data);
+                else if (kind == KindTargetedToast) AddTargetedToast(data);
                 else if (kind == KindToast) AddToast(data);
             }
             catch (Exception e)
@@ -427,6 +423,16 @@ namespace RollOfTheScoutClient
             return code == 0 ? string.Empty : NameOf(code);
         }
 
+        /// <summary>定向提示：只有 ActorNumber 与本机一致的才会显示（如只有舞王 / 待皓能看到的后空翻预警）。</summary>
+        private void AddTargetedToast(string data)
+        {
+            int tab = data.IndexOf('\t');
+            if (tab <= 0) return;
+            if (!int.TryParse(data.Substring(0, tab), out int actor)) return;
+            if (PhotonNetwork.LocalPlayer == null || PhotonNetwork.LocalPlayer.ActorNumber != actor) return;
+            AddToast(data.Substring(tab + 1));
+        }
+
         private void AddToast(string text)
         {
             if (string.IsNullOrEmpty(text)) return;
@@ -469,15 +475,15 @@ namespace RollOfTheScoutClient
             bool down = Input.GetKeyDown(key);
             bool held = Input.GetKey(key);
 
-            if (kind == 1)                 // 按住显示
+            if (kind == 1)                 // 1=按住显示
             {
                 _classListHeld = held;
             }
-            else if (kind == 2)            // 按下切换
+            else if (kind == 3)            // 3=按下切换
             {
                 if (down) _classListToggled = !_classListToggled;
             }
-            else                           // 按下显示若干秒
+            else                           // 2=按下显示若干秒
             {
                 if (down) _classListPressUntil = Time.time + ClassListPressDuration;
             }
@@ -487,7 +493,7 @@ namespace RollOfTheScoutClient
         {
             int kind = ClientConfig.ClassListModeKind();
             if (kind == 1) return _classListHeld;      // 按住显示
-            if (kind == 2) return _classListToggled;   // 按下切换
+            if (kind == 3) return _classListToggled;   // 按下切换
             return Time.time < _classListPressUntil;   // 按下显示若干秒
         }
 
@@ -508,7 +514,7 @@ namespace RollOfTheScoutClient
             if (!_hasRemoteSnapshot) return;
 
             var lines = new List<string>(_remoteClasses.Count + 1);
-            lines.Add($"[职业分配] 按 {ClientConfig.ClassListKey.Value} 显示");
+            lines.Add($"[职业分配 / Class List] {ClientConfig.ClassListKey.Value}");
             lines.AddRange(BuildPanelLines());
 
             if (_classListStyle == null)
@@ -517,7 +523,7 @@ namespace RollOfTheScoutClient
                 _classListTitleStyle = new GUIStyle(GUI.skin.label)
                 {
                     fontSize = size,
-                    fontStyle = FontStyle.Bold,
+                    fontStyle = FontStyle.Normal,
                     alignment = TextAnchor.MiddleLeft,
                 };
                 _classListTitleStyle.normal.textColor = new Color(1f, 0.9f, 0.4f);
@@ -562,7 +568,7 @@ namespace RollOfTheScoutClient
                 _classIntroTitleStyle = new GUIStyle(GUI.skin.label)
                 {
                     fontSize = size,
-                    fontStyle = FontStyle.Bold,
+                    fontStyle = FontStyle.Normal,
                     alignment = TextAnchor.MiddleLeft,
                 };
                 _classIntroTitleStyle.normal.textColor = new Color(1f, 0.9f, 0.4f);

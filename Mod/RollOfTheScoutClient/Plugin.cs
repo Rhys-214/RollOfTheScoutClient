@@ -33,6 +33,43 @@ namespace RollOfTheScoutClient
 
         private Harmony _harmony;
 
+        /// <summary>
+        /// 配置文件结构版本标记；改动 Section / Key 结构时递增。
+        /// 不一致时旧 cfg 会被备份并删除，由 BepInEx 重新生成（见 <see cref="ResetOutdatedConfig"/>）。
+        /// </summary>
+        private const string ConfigRevision = "2026-10-25-bilingual3";
+
+        /// <summary>在第一次 Bind 之前检查并清理「旧结构」配置文件（备份为 .old-时间戳）。</summary>
+        private static void ResetOutdatedConfig(BepInEx.Configuration.ConfigFile config)
+        {
+            try
+            {
+                string path = config != null ? config.ConfigFilePath : null;
+                if (string.IsNullOrEmpty(path)) return;
+
+                string marker = path + ".rev";
+                if (!File.Exists(path))
+                {
+                    File.WriteAllText(marker, ConfigRevision);
+                    return;
+                }
+
+                string rev = File.Exists(marker) ? File.ReadAllText(marker).Trim() : null;
+                if (string.Equals(rev, ConfigRevision, System.StringComparison.Ordinal)) return;
+
+                string backup = path + ".old-" + System.DateTime.Now.ToString("yyyyMMdd-HHmmss");
+                File.Move(path, backup);
+                File.WriteAllText(marker, ConfigRevision);
+                Log.LogWarning(
+                    $"[RollOfTheScoutClient] 配置文件结构已更新，旧配置已备份为 {System.IO.Path.GetFileName(backup)}，"
+                    + "并将重新生成包含固定中英双语键名 / 注释的默认配置。");
+            }
+            catch (System.Exception e)
+            {
+                Log.LogWarning($"[RollOfTheScoutClient] 检查旧配置文件失败（已忽略）：{e.Message}");
+            }
+        }
+
         private void Awake()
         {
             Log = Logger;
@@ -45,7 +82,9 @@ namespace RollOfTheScoutClient
                 return;
             }
 
-            // 配置项按游戏语言本地化（见 ConfigLocalization）；绑定到插件自身的 Config，ModConfig 才能读到。
+            // 配置结构已改为固定中英双语：旧 cfg 的键完全不同，必须先清理（备份）再生成新默认文件。
+            ResetOutdatedConfig(Config);
+            // 配置项为固定中英双语（见 ConfigLocalization）；绑定到插件自身的 Config，ModConfig 才能读到。
             ClientConfig.Initialize(Config);
             gameObject.AddComponent<ClassDisplayReceiver>();
 

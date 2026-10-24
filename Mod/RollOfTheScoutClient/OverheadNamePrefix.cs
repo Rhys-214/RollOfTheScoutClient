@@ -79,6 +79,8 @@ namespace RollOfTheScoutClient
         public static void Apply(PlayerName pn, Character ch, Func<Character, string> classNameLookup)
         {
             if (pn == null || ch == null) return;
+            // 隐藏 / 已淡出的名字不处理（可见时下一帧会补上），省掉每帧每玩家的一次职业查询。
+            if (!pn.gameObject.activeSelf) return;
 
             var st = GetState(pn);
 

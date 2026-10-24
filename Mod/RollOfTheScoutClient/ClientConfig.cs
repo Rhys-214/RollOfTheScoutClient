@@ -24,19 +24,20 @@ namespace RollOfTheScoutClient
             ClassListKey = BindL(config, "通用", "职业显示-按键", "Tab",
                 "按哪个键在【客机自己的屏幕】上显示「当前职业分配情况」（由主机广播而来）。\n" +
                 "填写 Unity 的 KeyCode 名，例如 Tab、F1、LeftAlt、BackQuote、Mouse2。");
-            // 该项的「值」也随语言变化：英文配置用 HoldToShow / PressToShow / ToggleOnPress，
-            // 中文配置沿用 按住显示 / 按下显示 / 按下切换；代码对中英两种写法都识别。
-            ClassListMode = BindL(config, "通用", "职业显示-模式",
-                ConfigLocalization.UseEnglish ? "HoldToShow" : "按住显示",
-                "职业分配面板的显示方式：\n" +
-                "按住显示 = 按住该键时显示，松开立即隐藏；\n" +
-                "按下显示 = 按一下显示 5 秒后自动隐藏；\n" +
-                "按下切换 = 每按一次在「显示 / 隐藏」之间切换。");
-            NamePrefix = BindL(config, "通用", "头顶职业前缀", true,
+            // 该项的「值」固定为 1 / 2 / 3：1=按住显示，2=按下显示 5 秒，3=按下切换（默认 1）。
+            ClassListMode = BindL(config, "通用", "职业显示-模式", "1",
+                "职业分配面板的显示方式（1 / 2 / 3）：\n" +
+                "1 = 按住该键时显示，松开立即隐藏；\n" +
+                "2 = 按一下显示 5 秒后自动隐藏；\n" +
+                "3 = 每按一次在「显示 / 隐藏」之间切换。\n" +
+                "默认 1。旧版文字值仍兼容。");
+            NamePrefix = BindL(config, "通用", "头顶职业前缀", false,
                 "是否把「头顶玩家名称」改写成「【职业】昵称」，例如「张三」→「【先驱】张三」。\n" +
                 "「【职业】」用该玩家进入游戏时的皮肤色着色；「昵称」维持原版颜色不变。\n" +
                 "职业数据由主机广播而来；本开关只影响【本机屏幕】上看到的名字。\n" +
-                "默认 true。");
+                "⚠ **默认关闭**：该功能每帧、每个玩家都会执行；若同时装有其它的头顶名称模组\n" +
+                "（例如 AlwaysDisplayPlayerName），双方会每帧互相改写文本，导致明显掉帧。\n" +
+                "默认 false（关闭）。");
 
             // 首次运行（或新增键）时立即落盘：确保 {GUID}.cfg 一定生成，ModConfig 才有文件可读。
             config.Save();
@@ -78,10 +79,9 @@ namespace RollOfTheScoutClient
         }
 
         /// <summary>
-        /// 显示模式分类：1 = 按住显示、2 = 按下切换、0 = 按下显示若干秒。
-        /// 分类顺序与旧实现一致（先判「按住」、再判「切换」）；同样按配置字符串缓存，
+        /// 显示模式分类：1 = 按住显示、2 = 按下显示若干秒、3 = 按下切换。
+        /// 与主模组一致，配置值固定为 1 / 2 / 3（旧版文字值仍兼容）；按配置字符串缓存，
         /// 避免每帧对模式串做两次 <c>Contains</c>。
-        /// 中文配置值为 按住显示 / 按下显示 / 按下切换，英文配置值为 HoldToShow / PressToShow / ToggleOnPress，两种写法都识别。
         /// </summary>
         public static int ClassListModeKind()
         {
@@ -90,8 +90,9 @@ namespace RollOfTheScoutClient
 
             _cachedModeRaw = mode;
             string lower = mode.ToLowerInvariant();
-            _cachedModeKind = (mode.Contains("按住") || lower.Contains("hold")) ? 1
-                : (mode.Contains("切换") || lower.Contains("toggle")) ? 2 : 0;
+            _cachedModeKind = (mode.Trim() == "1" || mode.Contains("按住") || lower.Contains("hold")) ? 1
+                : (mode.Trim() == "3" || mode.Contains("切换") || lower.Contains("toggle")) ? 3
+                : 2;
             return _cachedModeKind;
         }
 
