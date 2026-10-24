@@ -16,7 +16,7 @@
 - **Receive-only**: the data comes from the host's broadcast (Photon custom event `197`); this addon never raises events and never affects the rules.
 - **Needs the host to run the main mod** (`RollOfTheScout`) with class-display network sync enabled — otherwise there is nothing to show.
 - **Self-disables** when the main mod is already installed on the same machine (the main mod already provides the client-side display), so installing both is harmless.
-- **Bilingual configuration**, selected automatically by the game language.
+- **Bilingual configuration**
 - Also adds a compatibility layer so the overhead prefix still shows up in third-party name-tag mods (BetterPlayerDistance / Sense of Direction).
 
 ### Requirements
@@ -106,7 +106,7 @@ General contact: email **2043581350@qq.com**.
 - **纯接收**：数据来自主机的广播（Photon 自定义事件 `197`）；本模组从不发送事件，也绝不影响玩法规则。
 - **需要主机安装主模组**（`RollOfTheScout`）并开启「职业显示-网络同步」，否则没有可显示的数据。
 - **自我停用**：若本机已安装主模组，本模组会自动停用（主模组本身已提供客机显示），两者都装也不会冲突。
-- **中英双语配置**，按游戏语言自动切换。
+- **中英双语配置**
 - 另含兼容层，使头顶前缀在第三方头顶 id 显示模组（BetterPlayerDistance / Sense of Direction）中也能正常显示。
 
 ### 环境要求
