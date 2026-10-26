@@ -67,9 +67,15 @@ namespace RollOfTheScoutClient
         private GUIStyle _classListStyle;
         private GUIStyle _classListTitleStyle;
 
-        // ---- 「职业介绍」板块（本人职业的关键词 / 简介，跟随职业分配面板一起显示）----
+        // ---- 「职业介绍」板块（本人职业的关键词 / 简介，**固定在左上角**，随职业分配面板一起显示）----
         private GUIStyle _classIntroStyle;
         private GUIStyle _classIntroTitleStyle;
+
+        /// <summary>
+        /// IMGUI 回退路径：「职业介绍」板块的底边（0 = 本帧未绘制）。
+        /// 介绍板块在左上角，提示层需据此临时下移，避免两者重叠。
+        /// </summary>
+        private float _imguiIntroBottom;
         private int _classIntroCacheCode = -1;
         private string _classIntroCacheTitle;
         private List<string> _classIntroCacheLines;
@@ -503,8 +509,11 @@ namespace RollOfTheScoutClient
             // 字体尚未解析出来时，回退到旧的 IMGUI 自绘（Arial），保证功能不中断。
             if (PeakNativeUi.NativeOverlay.Ready) return;
 
-            DrawToasts();
+            // 先画右上角面板 + 左上角职业介绍，再画提示：
+            // 提示需要知道介绍板块本帧的底边，才能临时下移避免重叠。
+            _imguiIntroBottom = 0f;
             DrawClassList();
+            DrawToasts();
         }
 
         private void DrawClassList()
@@ -550,15 +559,16 @@ namespace RollOfTheScoutClient
                 GUI.Label(line, lines[i], i == 0 ? _classListTitleStyle : _classListStyle);
             }
 
-            // 面板下方：本人职业的关键词与简介（与面板同时显示）
-            DrawClassIntro(box.yMax + 8f);
+            // 左上角：本人职业的关键词与简介（与面板同时显示；不再跟随面板高度）
+            DrawClassIntro();
         }
 
         /// <summary>
         /// IMGUI 回退绘制「本人职业介绍」板块（仅在原生字体叠加层不可用时走到这里）。
-        /// 与原生叠加层同义：只显示本机玩家自己的职业，不列出全部职业。
+        /// 与原生叠加层同义：只显示本机玩家自己的职业，不列出全部职业；**固定在屏幕左上角**，
+        /// 玩家人数很多、右上角面板很长时也不会被挤出屏幕。绘制后记录底边供提示层下移。
         /// </summary>
-        private void DrawClassIntro(float top)
+        private void DrawClassIntro()
         {
             if (!TryBuildClassIntro(LocalClassCode(), out string title, out List<string> lines)) return;
 
@@ -585,7 +595,7 @@ namespace RollOfTheScoutClient
             float lineH = _classIntroStyle.fontSize * 1.6f;
             var body = new GUIContent(string.Join("\n", lines));
             float bodyH = _classIntroStyle.CalcHeight(body, w - 20f);
-            var box = new Rect(Screen.width - w - 12f, top, w, lineH + bodyH + 16f);
+            var box = new Rect(12f, 12f, w, lineH + bodyH + 16f);
 
             GUI.color = new Color(0f, 0f, 0f, 0.6f);
             GUI.DrawTexture(box, Texture2D.whiteTexture);
@@ -593,6 +603,8 @@ namespace RollOfTheScoutClient
 
             GUI.Label(new Rect(box.x + 10f, box.y + 6f, box.width - 20f, lineH), title, _classIntroTitleStyle);
             GUI.Label(new Rect(box.x + 10f, box.y + 6f + lineH, box.width - 20f, bodyH), body, _classIntroStyle);
+
+            _imguiIntroBottom = box.yMax;   // 供提示层临时下移
         }
 
         private void DrawToasts()
@@ -613,7 +625,9 @@ namespace RollOfTheScoutClient
             float w = Screen.width * 0.45f;
             float lineH = _toastStyle.fontSize * 1.6f;
             float h = lineH * _toasts.Count + 12f;
-            var box = new Rect(12f, 12f, w, h);
+            // 介绍板块显示时临时下移到它下方（避免与左上角提示重叠）
+            float top = _imguiIntroBottom > 0f ? _imguiIntroBottom + 8f : 12f;
+            var box = new Rect(12f, top, w, h);
             GUI.color = new Color(0f, 0f, 0f, 0.6f);
             GUI.DrawTexture(box, Texture2D.whiteTexture);
             GUI.color = Color.white;

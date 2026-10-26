@@ -67,3 +67,17 @@
 - **新增** 支持定向提示（事件 197 Kind 6），供主模组发送「仅对应职业可见」的提醒（如强制后空翻前 10 秒预警）；非目标客机收到即忽略。
 - **调整** 配置键名的英文部分改为按中文分段、每段首字母大写（如 `ClassDisplay-Key职业显示-按键`）；**旧配置自动备份并重建**。
 - **调整** 屏幕文字取消加粗；游戏提供更细字体时优先使用，英文行更清晰。
+
+## 1.0.5
+
+### English
+
+- **Fixed** The class intro panel could show another class's description (usually after a reclass: the title showed the correct new class, but the description was **M's**).
+    - Root cause: `M = 8` and `Savage = 9` in the class enum, but this addon's intro table had **case 8 and case 9 swapped**, so a Savage rendered M's text and vice versa.
+- **Changed** The class intro panel now sits in the **top-left corner** instead of below the class list, so a large lobby can no longer push it off-screen; while it is visible, top-left notifications are shifted below it and return to the top-left afterwards.
+
+### 中文
+
+- **修复** 职业简介板块可能显示成其他职业的简介（多数发生在转职后：标题里的新职业正确，简介却显示成 **M** 的简介）。
+    - 根因：职业枚举 `M = 8`、`Savage = 9`，而本附属模组的简介表把 **case 8 / case 9 写反了** —— 野人显示 M 的简介（反之亦然）。
+- **调整** 职业介绍板块移至屏幕**左上角**（不再挂在职业分配面板下方），人数较多时不会被挤出屏幕；该板块显示期间，左上角提示临时下移到其下方，关闭后自动复位。
