@@ -7,7 +7,7 @@
 ## English
 
 > The **client display and MilesSoul sync addon** for **RollOfTheScout**. It draws the host-broadcast class panel, toasts and overhead **【Class】Nickname** prefix on each client's own screen. 
-> For MilesSoul, it also detects local Scout gem actions and settles their effects with the host-synchronized configuration.
+> - For MilesSoul, it also detects local Scout gem actions and settles their effects with the host-synchronized configuration.
 
 ### Highlights
 
@@ -97,8 +97,8 @@ General contact: email **2043581350@qq.com**.
 
 ## 中文
 
-> **RollOfTheScout（童子军的命运之骰）** 的**客机显示 / 残魂同步附属模组**。它在**客机自己的屏幕**上绘制职业分配面板、效果提示（Toast）与头顶「**【职业】昵称**」前缀
-> 残魂时还会检测本机童军宝石动作，并按主机同步的配置结算效果。
+> **RollOfTheScout（童子军的命运之骰）** 的**客机显示 / 残魂同步附属模组**。它在**客机自己的屏幕**上绘制职业分配面板、效果提示（Toast）与头顶「**【职业】昵称**」前缀。
+> - 残魂时还会检测本机童军宝石动作，并按主机同步的配置结算效果。
 
 ### 特色
 
