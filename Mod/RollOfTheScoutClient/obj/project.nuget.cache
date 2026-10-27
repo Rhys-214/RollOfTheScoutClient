@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "g+CjQR97qSw=",
+  "success": true,
+  "projectFilePath": "F:\\PEAKmodding\\Mod\\Github-mod\\Mod\\RollOfTheScoutClient\\RollOfTheScoutClient.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\20435\\.nuget\\packages\\netstandard.library.ref\\2.1.0\\netstandard.library.ref.2.1.0.nupkg.sha512"
+  ],
+  "logs": []
+}

@@ -1,5 +1,3 @@
-<!-- English first, Chinese below. / 英文在前，中文在后。 -->
-
 # RollOfTheScoutClient · 童子军的命运之骰：客机显示
 
 **English** ｜ **中文**（见下方）
@@ -8,14 +6,15 @@
 
 ## English
 
-> The **client display addon** for **RollOfTheScout**. It draws what the host broadcasts — the class-assignment panel, effect notifications (toasts) and the overhead **【Class】Nickname** prefix — on each client's **own screen**. It never changes gameplay and never sends anything to the host.
+> The **client display and MilesSoul sync addon** for **RollOfTheScout**. It draws the host-broadcast class panel, toasts and overhead **【Class】Nickname** prefix on each client's own screen. 
+> For MilesSoul, it also detects local Scout gem actions and settles their effects with the host-synchronized configuration.
 
 ### Highlights
 
 - **Shows class info on the client's own screen**: the class-assignment panel (key-triggered), effect notifications, and the overhead `【Class】Nickname` prefix.
-- **Receive-only**: the data comes from the host's broadcast (Photon custom event `197`); this addon never raises events and never affects the rules.
-- **Needs the host to run the main mod** (`RollOfTheScout`) with class-display network sync enabled — otherwise there is nothing to show.
-- **Self-disables** when the main mod is already installed on the same machine (the main mod already provides the client-side display), so installing both is harmless.
+- **Reliable MilesSoul gem effects**: uses the same local action detection and settlement as the main mod's client mode, avoiding host-side heuristic and stale-petrify writebacks. Only this feature exchanges targeted handshake / configuration / usage-count messages (Photon custom event `197`).
+- **Needs the host to run the main mod** (`RollOfTheScout`). Class display requires class-display network sync; MilesSoul gameplay sync is independent of that display option and requires the new host version.
+- **Self-disables** when the main mod is already installed on the same machine (the main mod provides both features), so installing both is harmless.
 - **Bilingual configuration**, selected automatically by the game language.
 - Also adds a compatibility layer so the overhead prefix still shows up in third-party name-tag mods (BetterPlayerDistance / Sense of Direction).
 
@@ -70,7 +69,7 @@ Output: `Mod/RollOfTheScoutClient/bin/Release/com.peakmodding.RollOfTheScoutClie
 
 - Class text is per-client local UI; a client without this addon (or the main mod) sees the class **effects** but no class **text**.
 - If the host does not run the main mod, there is no broadcast and nothing is displayed.
-- The addon draws only on the local screen; it cannot change what other players see.
+- The addon draws only on the local screen; it cannot change what other players see. MilesSoul usage reports are used by the host only for Scoutmaster-spawn counts, not to repeat the local status effects.
 
 ### License
 
@@ -98,14 +97,15 @@ General contact: email **2043581350@qq.com**.
 
 ## 中文
 
-> **RollOfTheScout（童子军的命运之骰）** 的**客机显示附属模组**。它把主机广播过来的数据 —— 职业分配面板、职业效果提示（Toast）、以及头顶的「**【职业】昵称**」前缀 —— 绘制在**客机自己的屏幕**上。它不改变任何玩法，也从不向主机发送任何东西。
+> **RollOfTheScout（童子军的命运之骰）** 的**客机显示 / 残魂同步附属模组**。它在**客机自己的屏幕**上绘制职业分配面板、效果提示（Toast）与头顶「**【职业】昵称**」前缀
+> 残魂时还会检测本机童军宝石动作，并按主机同步的配置结算效果。
 
 ### 特色
 
 - **在客机自己屏幕上显示职业信息**：职业分配面板（按键触发）、职业效果提示、以及头顶「【职业】昵称」前缀。
-- **纯接收**：数据来自主机的广播（Photon 自定义事件 `197`）；本模组从不发送事件，也绝不影响玩法规则。
-- **需要主机安装主模组**（`RollOfTheScout`）并开启「职业显示-网络同步」，否则没有可显示的数据。
-- **自我停用**：若本机已安装主模组，本模组会自动停用（主模组本身已提供客机显示），两者都装也不会冲突。
+- **可靠的残魂宝石效果**：与主模组客机模式共用本机动作检测与结算，避开主机启发式与旧石化值写回。仅该功能会通过 Photon 自定义事件 `197` 定向交换握手、配置与使用计数消息。
+- **需要主机安装主模组**（`RollOfTheScout`）：职业显示需开启「职业显示-网络同步」；残魂玩法同步不受该显示开关影响，但需要新版主机。
+- **自我停用**：若本机已安装主模组，本模组会自动停用（主模组本身已提供这两类功能），两者都装也不会冲突。
 - **中英双语配置**，按游戏语言自动切换。
 - 另含兼容层，使头顶前缀在第三方头顶 id 显示模组（BetterPlayerDistance / Sense of Direction）中也能正常显示。
 
@@ -160,7 +160,7 @@ dotnet build Mod/RollOfTheScoutClient/RollOfTheScoutClient.csproj -c Release
 
 - 职业文字属于各客户端本地 UI；未装本附属模组（也没装主模组）的客机只看得到职业**效果**，看不到职业**文字**。
 - 若主机没有安装主模组，就没有广播来源，本模组不会显示任何内容。
-- 本模组只绘制在**本机屏幕**上，无法改变其他玩家看到的内容。
+- 职业文字只绘制在**本机屏幕**上，无法改变其他玩家看到的内容；残魂使用报告仅供主机累计【众魂阻挠】次数，不会重复施加本机已结算的状态效果。
 
 ### 许可证
 

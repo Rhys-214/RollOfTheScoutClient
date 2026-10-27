@@ -9,14 +9,14 @@ namespace RollOfTheScoutClient
 {
     /// <summary>
     /// 附属模组入口：把「主机 RollOfTheScout 广播过来的职业显示」绘制到**客机自己的屏幕**上，
-    /// 并给头顶玩家名称加上「【职业】」前缀。
+    /// 给头顶玩家名称加上「【职业】」前缀，并在残魂时执行与主模组客机模式共用的本机宝石结算。
     ///
     /// 开启 / 停用规则（关键需求）：
     /// · 只要本机安装了主模组 <c>com.peakmodding.RollOfTheScout</c>，本附属模组**完全不启用**
     ///   （主模组在客机上也会提供同样的显示功能）—— 因此主机（装了主模组）与「主客模组都装」的客机
     ///   都不会重复启用本模组，避免重复冲突与性能浪费；
     /// · 只有当本机**没有**主模组（典型：客机只装附属模组）时，本模组才工作；
-    /// · 「客机只装主模组」时显示功能由主模组自己提供（见 RollOfTheScout 的客机接收模式）。
+    /// · 「客机只装主模组」时显示与残魂本机结算均由主模组自己提供。
     /// </summary>
     [BepInPlugin(Guid, "RollOfTheScoutClient", "1.0.0")]
     public class Plugin : BaseUnityPlugin
@@ -87,6 +87,10 @@ namespace RollOfTheScoutClient
             // 配置项为固定中英双语（见 ConfigLocalization）；绑定到插件自身的 Config，ModConfig 才能读到。
             ClientConfig.Initialize(Config);
             gameObject.AddComponent<ClassDisplayReceiver>();
+            var milesLocal = gameObject.AddComponent<RollOfTheScout.Shared.MilesSoulLocal>();
+            milesLocal.Configure(
+                msg => Log.LogInfo($"[RollOfTheScoutClient] {msg}"),
+                msg => Log.LogWarning($"[RollOfTheScoutClient] {msg}"));
 
             _harmony = new Harmony(Guid);
             HarmonyInstance = _harmony;
@@ -109,8 +113,42 @@ namespace RollOfTheScoutClient
                 }
             }
 
+            // 残魂本机检测：与主模组客机模式共用同一份实现。
+            var cloneShoot = ResolveMethod(typeof(Peak.Action_CloneSelectedItem), "RPCA_Shoot", typeof(Vector3));
+            TryPatch("Action_CloneSelectedItem.RPCA_Shoot (残魂本机·童军的盛情)", cloneShoot,
+                postfix: AccessTools.Method(typeof(RollOfTheScout.Shared.MilesLocalClonePatch),
+                    nameof(RollOfTheScout.Shared.MilesLocalClonePatch.Postfix)));
+
+            var toggleGem = ResolveMethod(typeof(Peak.AmuletBase), "ToggleGem", null);
+            TryPatch("AmuletBase.ToggleGem (残魂本机·宝石使用)", toggleGem,
+                prefix: AccessTools.Method(typeof(RollOfTheScout.Shared.MilesLocalGemUsePatch),
+                    nameof(RollOfTheScout.Shared.MilesLocalGemUsePatch.ToggleGemPrefix)),
+                postfix: AccessTools.Method(typeof(RollOfTheScout.Shared.MilesLocalGemUsePatch),
+                    nameof(RollOfTheScout.Shared.MilesLocalGemUsePatch.ToggleGemPostfix)));
+
+            var healingGem = ResolveMethod(typeof(Peak.Action_HealingGem), "RunAction", null);
+            TryPatch("Action_HealingGem.RunAction (残魂本机·童军的毅力)", healingGem,
+                prefix: AccessTools.Method(typeof(RollOfTheScout.Shared.MilesLocalGemUsePatch),
+                    nameof(RollOfTheScout.Shared.MilesLocalGemUsePatch.HealingGemPrefix)),
+                postfix: AccessTools.Method(typeof(RollOfTheScout.Shared.MilesLocalGemUsePatch),
+                    nameof(RollOfTheScout.Shared.MilesLocalGemUsePatch.HealingGemPostfix)));
+
+            var superJump = ResolveMethod(typeof(Peak.Action_SuperJumpAmulet), "RunAction", null);
+            TryPatch("Action_SuperJumpAmulet.RunAction (残魂本机·童军的进取)", superJump,
+                prefix: AccessTools.Method(typeof(RollOfTheScout.Shared.MilesLocalGemUsePatch),
+                    nameof(RollOfTheScout.Shared.MilesLocalGemUsePatch.SuperJumpPrefix)),
+                postfix: AccessTools.Method(typeof(RollOfTheScout.Shared.MilesLocalGemUsePatch),
+                    nameof(RollOfTheScout.Shared.MilesLocalGemUsePatch.SuperJumpPostfix)));
+
+            var finishCast = ResolveMethod(typeof(Item), "FinishCastSecondary", null);
+            TryPatch("Item.FinishCastSecondary (残魂本机·宝石喂食)", finishCast,
+                prefix: AccessTools.Method(typeof(RollOfTheScout.Shared.MilesLocalFeedPatch),
+                    nameof(RollOfTheScout.Shared.MilesLocalFeedPatch.Prefix)),
+                postfix: AccessTools.Method(typeof(RollOfTheScout.Shared.MilesLocalFeedPatch),
+                    nameof(RollOfTheScout.Shared.MilesLocalFeedPatch.Postfix)));
+
             Log.LogInfo(
-                "[RollOfTheScoutClient] 已加载。用于显示主机广播过来的职业分配情况、职业效果提示，以及头顶职业前缀。");
+                "[RollOfTheScoutClient] 已加载。提供职业显示，并在残魂时执行与主模组客机模式一致的本机宝石结算。");
 
             // 第三方「头顶id显示」模组兼容层（BetterPlayerDistance / Sense of Direction）：
             // 这两个模组会隐藏原版名牌、改用自己绘制的标签，因此仅靠上面的原版名牌补丁在其标签上看不到前缀。
@@ -128,6 +166,26 @@ namespace RollOfTheScoutClient
             {
                 _harmony.UnpatchSelf();
                 _harmony = null;
+            }
+        }
+
+        private void TryPatch(string label, MethodBase target, MethodInfo prefix = null, MethodInfo postfix = null)
+        {
+            if (target == null)
+            {
+                Log.LogWarning($"[RollOfTheScoutClient] 未找到目标方法，跳过补丁：{label}");
+                return;
+            }
+            try
+            {
+                _harmony.Patch(target,
+                    prefix: prefix != null ? new HarmonyMethod(prefix) : null,
+                    postfix: postfix != null ? new HarmonyMethod(postfix) : null);
+                Log.LogInfo($"[RollOfTheScoutClient] 补丁成功：{label}");
+            }
+            catch (System.Exception e)
+            {
+                Log.LogError($"[RollOfTheScoutClient] 补丁失败：{label} → {e.Message}");
             }
         }
 

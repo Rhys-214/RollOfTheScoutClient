@@ -27,6 +27,8 @@
     <Compile Include="..\Shared\ThirdPartyOverheadNameCompat.cs" />
     <!-- 与主模组（RollOfTheScout）共用的「原生字体叠加层」（用游戏自带 TMP 字体绘制，取代 IMGUI 自绘） -->
     <Compile Include="..\Shared\PeakNativeUi.cs" />
+    <!-- 与主模组共用的残魂本机宝石检测 / 状态结算 -->
+    <Compile Include="..\Shared\MilesSoulLocal.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -89,6 +91,23 @@
     </Reference>
     <Reference Include="Photon3Unity3D">
       <HintPath>$(PeakRoot)\PEAK_Data\Managed\Photon3Unity3D.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Zorro.Core.Runtime">
+      <HintPath>$(PeakRoot)\PEAK_Data\Managed\Zorro.Core.Runtime.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- 残魂本机检测使用 ItemDatabase；其继承链还需要 Odin/Sirenix 类型。 -->
+    <Reference Include="Sirenix.Serialization">
+      <HintPath>$(PeakRoot)\PEAK_Data\Managed\Sirenix.Serialization.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Sirenix.Utilities">
+      <HintPath>$(PeakRoot)\PEAK_Data\Managed\Sirenix.Utilities.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Sirenix.OdinInspector.Attributes">
+      <HintPath>$(PeakRoot)\PEAK_Data\Managed\Sirenix.OdinInspector.Attributes.dll</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>

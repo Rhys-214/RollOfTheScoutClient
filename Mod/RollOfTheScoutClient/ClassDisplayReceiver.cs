@@ -18,7 +18,8 @@ namespace RollOfTheScoutClient
     /// 另：本机若成为主机（MasterClient），则没有广播来源，清空数据、不显示。
     ///
     /// 数据来源：主机用 Photon 自定义事件（码 197，见主模组 <c>RollOfTheScout.ClassDisplayNet</c>）发送，
-    /// 格式 <c>object[]{ ModId(string), Kind(byte), Data(string) }</c>。本模组只接收、从不发送。
+    /// 格式 <c>object[]{ ModId(string), Kind(byte), Data(string) }</c>。本显示组件只接收、从不发送；
+    /// 残魂握手与使用报告由独立的共用组件负责。
     /// </summary>
     public sealed class ClassDisplayReceiver : MonoBehaviour, IOnEventCallback
     {
@@ -64,6 +65,10 @@ namespace RollOfTheScoutClient
         private const float ClassListPressDuration = 5f;
 
         private GUIStyle _toastStyle;
+        /// <summary>IMGUI 回退路径：每条提示的实际排版高度（复用列表，避免每帧分配）。</summary>
+        private readonly List<float> _toastHeights = new List<float>();
+        /// <summary>IMGUI 回退路径：复用的文本测量对象。</summary>
+        private readonly GUIContent _toastMeasure = new GUIContent();
         private GUIStyle _classListStyle;
         private GUIStyle _classListTitleStyle;
 
@@ -616,26 +621,43 @@ namespace RollOfTheScoutClient
                 _toastStyle = new GUIStyle(GUI.skin.label)
                 {
                     fontSize = Mathf.Max(16, Mathf.RoundToInt(Screen.height / 48f)),
-                    fontStyle = FontStyle.Bold,
+                    fontStyle = FontStyle.Normal,
                     alignment = TextAnchor.MiddleLeft,
+                    wordWrap = true,
                 };
                 _toastStyle.normal.textColor = Color.white;
             }
 
             float w = Screen.width * 0.45f;
+            float innerW = w - 20f;
             float lineH = _toastStyle.fontSize * 1.6f;
-            float h = lineH * _toasts.Count + 12f;
+
+            // 一条提示可能自带换行（中英双语各一行），也可能因屏幕较窄而折行：
+            // 因此必须按**实际排版高度**逐条累计，不能按「条数 × 单行高」计算，
+            // 否则窗口只有一半高度，两行文字会被垂直居中裁掉上下各一半。
+            _toastHeights.Clear();
+            float contentH = 0f;
+            for (int i = 0; i < _toasts.Count; i++)
+            {
+                _toastMeasure.text = _toasts[i];
+                float h = Mathf.Max(lineH, _toastStyle.CalcHeight(_toastMeasure, innerW) + 2f);
+                _toastHeights.Add(h);
+                contentH += h;
+            }
+
             // 介绍板块显示时临时下移到它下方（避免与左上角提示重叠）
             float top = _imguiIntroBottom > 0f ? _imguiIntroBottom + 8f : 12f;
-            var box = new Rect(12f, top, w, h);
+            var box = new Rect(12f, top, w, contentH + 12f);
             GUI.color = new Color(0f, 0f, 0f, 0.6f);
             GUI.DrawTexture(box, Texture2D.whiteTexture);
             GUI.color = Color.white;
 
+            float y = box.y + 6f;
             for (int i = 0; i < _toasts.Count; i++)
             {
-                var line = new Rect(box.x + 10f, box.y + 6f + lineH * i, box.width - 20f, lineH);
-                GUI.Label(line, _toasts[i], _toastStyle);
+                float h = _toastHeights[i];
+                GUI.Label(new Rect(box.x + 10f, y, innerW, h), _toasts[i], _toastStyle);
+                y += h;
             }
         }
     }

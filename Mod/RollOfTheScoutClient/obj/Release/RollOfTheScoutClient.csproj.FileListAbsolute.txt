@@ -1,0 +1,8 @@
+F:\PEAKmodding\Mod\Github-mod\Mod\RollOfTheScoutClient\bin\Release\com.peakmodding.RollOfTheScoutClient.deps.json
+F:\PEAKmodding\Mod\Github-mod\Mod\RollOfTheScoutClient\bin\Release\com.peakmodding.RollOfTheScoutClient.dll
+F:\PEAKmodding\Mod\Github-mod\Mod\RollOfTheScoutClient\obj\Release\RollOfTheScoutClient.csproj.AssemblyReference.cache
+F:\PEAKmodding\Mod\Github-mod\Mod\RollOfTheScoutClient\obj\Release\RollOfTheScoutClient.GeneratedMSBuildEditorConfig.editorconfig
+F:\PEAKmodding\Mod\Github-mod\Mod\RollOfTheScoutClient\obj\Release\RollOfTheScoutClient.AssemblyInfoInputs.cache
+F:\PEAKmodding\Mod\Github-mod\Mod\RollOfTheScoutClient\obj\Release\RollOfTheScoutClient.AssemblyInfo.cs
+F:\PEAKmodding\Mod\Github-mod\Mod\RollOfTheScoutClient\obj\Release\RollOfTheScoutClient.csproj.CoreCompileInputs.cache
+F:\PEAKmodding\Mod\Github-mod\Mod\RollOfTheScoutClient\obj\Release\com.peakmodding.RollOfTheScoutClient.dll
