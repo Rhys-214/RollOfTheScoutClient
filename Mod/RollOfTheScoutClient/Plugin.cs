@@ -18,7 +18,7 @@ namespace RollOfTheScoutClient
     /// · 只有当本机**没有**主模组（典型：客机只装附属模组）时，本模组才工作；
     /// · 「客机只装主模组」时显示与残魂本机结算均由主模组自己提供。
     /// </summary>
-    [BepInPlugin(Guid, "RollOfTheScoutClient", "1.0.0")]
+    [BepInPlugin(Guid, "RollOfTheScoutClient", "1.0.7")]
     public class Plugin : BaseUnityPlugin
     {
         public const string Guid = "com.peakmodding.RollOfTheScoutClient";

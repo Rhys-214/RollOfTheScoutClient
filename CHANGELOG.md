@@ -109,3 +109,17 @@
 - **修复** 部分客机上左上角提示窗口高度不足，中英双语两行提示各被裁掉一半。
     - 根因：原生 TMP 字体叠加层不可用时走 IMGUI 回退绘制，该路径把每条提示按固定单行高度绘制；一条提示本身可含换行（英文 + 中文），窄屏还会折行，配合垂直居中即被上下对称裁切，窗口背景高度同样偏小。
     - 现在逐条用 `GUIStyle.CalcHeight` 测量实际高度并累加窗口高度，启用自动折行，并取消回退文本加粗（与原生叠加层一致）。
+
+## 1.0.7 - Halloween Update
+
+### English
+
+- **New** Local fallback data for the **Chaos Enderman** (code 31), **Gargoyle** (code 32), **Alchemist** (code 33) and **Trickster** (code 34) classes added by main mod 1.1.0: `ClassNames` can resolve these codes, and `ClassIntroText` carries their keywords / intro in both languages. Display-only, no gameplay code; the addon remains receive-only.
+- **Note** The host already broadcasts new class names and introductions (event 197 kinds 3 / 4 / 5), so older addon builds display them too; this build only removes the brief "None · 无职业" window before the broadcast arrives. No config keys changed, so existing configs are kept.
+- **Fixed** MilesSoul 【Rule Zero】 local settlement (shared with the main mod's client mode): the 3-second petrify correction window now always ends and cleans up (falling back to one extra-stamina grant with a warning if the value did not return), and a missing pre-use petrify snapshot is logged and skipped instead of silently using the post-cost value.
+
+### 中文
+
+- **新增** 为主模组 1.1.0 新增的**混乱末影人**（职业码 31）、**石像鬼**（职业码 32）、**炼金术士**（职业码 33）、**捣蛋鬼**（职业码 34）职业补充本地兜底数据：`ClassNames` 可解析对应职业码，`ClassIntroText` 补充其中英关键词 / 简介。仅为显示，不含玩法代码；职业显示仍为纯接收。
+- **注意** 主机本就会广播新职业名称与介绍（事件 197 的 Kind 3 / 4 / 5），更旧的附属模组版本也能显示；本版本只是消除广播到达前短暂的「无职业」占位。未改动任何配置键，现有配置会被保留。
+- **修复** 残魂【零号守则】本机结算（与主模组客机模式共用同一份源码）：3 秒石化校正窗口到期必定收尾（若未回到基准则兜底发放一次额外体力并写警告）；缺失「使用前」石化快照时改为写警告并跳过抵消，不再静默以代价后的值当基准。

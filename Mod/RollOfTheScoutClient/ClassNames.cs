@@ -43,6 +43,10 @@ namespace RollOfTheScoutClient
                 case 28: return "Astronaut · 太空人";
                 case 29: return "Langwang · 榔王";
                 case 30: return "Programmer · 程序员";
+                case 31: return "ChaosEnderman · 混乱末影人";
+                case 32: return "Gargoyle · 石像鬼";
+                case 33: return "Alchemist · 炼金术士";
+                case 34: return "Trickster · 捣蛋鬼";
                 default: return "None · 无职业";
             }
         }
